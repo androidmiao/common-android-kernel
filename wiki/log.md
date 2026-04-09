@@ -1,5 +1,79 @@
 # Wiki Log
 
+## [2026-04-09] apis | 核心 API 介面全面分析 — 5 個 API 頁面建立
+
+深度分析核心五大 API 介面類型，建立 `wiki/apis/` 下全部 5 個頁面，總計約 1,500 行中文 Wiki。
+
+**建立的頁面：**
+
+1. **apis/ioctl-interfaces.md** — ioctl 介面
+   - 命令編碼格式（direction/size/type/number 四欄位）
+   - VFS 派發機制：`SYSCALL_DEFINE3(ioctl)` → `do_vfs_ioctl()` → `vfs_ioctl()`
+   - 1,834 個命令（132 標頭檔、40+ magic number 群組）
+   - Android Binder ioctl（13 命令 + BC 21 + BR 23）、Binderfs 控制
+   - 主要群組：V4L2(116)、Input(18)、DRM、TTY(30)、USB(55)
+   - 32/64-bit 相容處理
+
+2. **apis/netlink.md** — Netlink 介面
+   - AF_NETLINK socket 架構：af_netlink.c(2,953行) + genetlink.c(1,997行)
+   - 17 個協定家族（ROUTE/NETFILTER/XFRM/KOBJECT_UEVENT/GENERIC 等）
+   - Generic Netlink 框架：IDR 動態 ID 分配、genl_family 結構、20+ 家族
+   - RTNetlink 詳述：RTM_* 訊息類型、handler 註冊、屬性策略
+   - Android Binder Netlink 家族：錯誤報告與交易除錯
+   - 訊息格式：nlmsghdr + nlattr 結構
+
+3. **apis/sysfs-procfs.md** — sysfs/procfs 介面
+   - sysfs：kobject 基礎設施、DEVICE_ATTR/BUS_ATTR/DRIVER_ATTR/CLASS_ATTR 巨集
+   - 屬性群組與 is_visible() 動態控制
+   - procfs：proc_ops 結構、6 種 proc_create API 變體
+   - seq_file 介面：start/stop/next/show 回呼模式
+   - /proc/[pid]/ 行程資訊（base.c 98,726 行）
+   - Android 整合：Trusty sysfs、cpufreq times、LSM hook
+
+4. **apis/kfuncs-bpf.md** — BPF kfuncs 介面
+   - 45 個 kfunc 集合（BTF_KFUNCS_START）、31 個檔案
+   - 16 種 KF_* 旗標（ACQUIRE/RELEASE/SLEEPABLE/DESTRUCTIVE/ITER 等）
+   - 主要集合：generic(47)、common(88+)、cpumask(28)、arena(3)、crypto(5)
+   - 網路 kfuncs：skb/XDP/sock_addr/TCP 六個集合
+   - 傳統 BPF helpers：104 個 BPF_CALL_N、157 個 bpf_func_proto
+   - kfunc vs helper 比較、驗證器檢查
+
+5. **apis/syscalls.md** — 系統呼叫介面
+   - 471 個系統呼叫（__NR_syscalls = 471，編號 0-470）
+   - ARM64 呼叫慣例（X0-X5 引數、X8 syscall number）
+   - 入口流程：el0_svc → do_el0_svc() → el0_svc_common() → sys_call_table
+   - SYSCALL_DEFINE/wrapper 巨集機制
+   - 系統呼叫分類（行程/檔案/記憶體/網路/IPC/信號/排程/安全）
+   - 無 Android 專屬 syscall，擴充透過 ioctl/vendor hooks/BPF
+
+**驗證：** 交叉比對原始碼行號、函式簽名、資料結構定義。
+
+Pages created: `apis/ioctl-interfaces.md`, `apis/netlink.md`, `apis/sysfs-procfs.md`, `apis/kfuncs-bpf.md`, `apis/syscalls.md`
+Pages updated: `index.md`（APIs 區段、Coverage Dashboard 新增 APIs 列）
+
+## [2026-04-09] android | drivers/android/ 目錄分析 — Android-Specific 頁面建立
+
+深度分析 `common/drivers/android/` 目錄及相關標頭檔（`android_kabi.h`、`android_vendor.h`、`include/trace/hooks/`、`include/uapi/linux/android/`），建立 `wiki/android/` 下 6 個主題頁面。
+
+**涵蓋範圍：**
+- `drivers/android/` 全部 44 個檔案（~21,700 行），含 C 版 Binder (7,374 行)、Rust 版 Binder (9,080 行)、Binderfs、binder_alloc、vendor_hooks、debug_kinfo
+- 8 個 Kconfig 選項分析（ANDROID_BINDER_IPC / RUST、BINDERFS、VENDOR_HOOKS、DEBUG_KINFO、KABI_RESERVE、VENDOR_OEM_DATA）
+- 29 個 vendor hook 標頭檔、~141 個 hooks 完整分類統計
+- KABI 保留機制（android_kabi.h）與 Vendor/OEM 資料填充（android_vendor.h）
+- Android 修補政策（ANDROID:/BACKPORT:/FROMGIT:/FROMLIST:）
+- GKI 模組管理與 KMI 符號保護
+
+**建立的頁面：**
+1. `android/drivers-android-overview.md` — 目錄總覽、元件分類、編譯依賴圖
+2. `android/abi-stability.md` — ABI 穩定性四層機制
+3. `android/vendor-hook-catalogue.md` — 全部 hook 標頭檔清單與統計
+4. `android/android-patches-policy.md` — 修補分類與上游化進程
+5. `android/debug-kinfo.md` — debug_kinfo 驅動詳細分析
+6. `android/gki-modules-list.md` — GKI 模組分類與管理
+
+Pages created: 6 pages in `android/`
+Pages updated: `index.md`（新增 Android-Specific 區段 6 個連結、Coverage Dashboard 更新）
+
 ## [2026-04-08] init | Wiki bootstrap
 Created wiki structure and schema. Directories: `subsystems/`, `concepts/`, `entities/`, `data-structures/`, `apis/`, `android/`, `analyses/`, `sources/`. Schema documented in `CLAUDE.md`. Index and overview pages created. No source files ingested yet.
 
@@ -343,3 +417,103 @@ Pages updated: `index.md`（新增 7 個 Entity 連結與摘要、Coverage Dashb
 
 Pages created: `data-structures/task_struct.md`, `data-structures/mm_struct.md`, `data-structures/sk_buff.md`, `data-structures/binder_proc.md`, `data-structures/inode.md`, `data-structures/page.md`
 Pages updated: `index.md`（新增 6 個 Data Structure 連結與摘要、Coverage Dashboard 新增 Data Structures 列）、`log.md`
+
+## [2026-04-09] analyses | 全部 6 個 Analysis 頁面建立
+
+基於已建檔的 7 個子系統、11 個概念、7 個實體、6 個資料結構頁面，產出 6 篇跨子系統深度分析，總計約 3,500 行中文 Wiki。
+
+**建立的頁面：**
+
+1. **analyses/vendor-hooks-distribution.md** — Vendor Hooks 跨子系統分佈分析
+   - 130 個 hooks 按子系統統計表（排程器 78/60%、UFS 9、SELinux 5、Cgroup 3、IOMMU 3 等）
+   - Restricted vs Unrestricted 設計選擇分析
+   - 排程器佔六成的策略含義、安全子系統全部 restricted 的原因
+   - Block Layer 與 IPC 零 hooks 的替代擴展機制（sched_ext、BPF LSM、Netfilter）
+   - 效能影響分析（static_branch_unlikely NOP、static_call 直接呼叫）
+
+2. **analyses/android-vs-upstream.md** — Android vs Upstream 差異全面分析
+   - 四層修改分類框架：Android 專屬元件、Android 補丁、配置差異、完全上游
+   - Android 專屬元件清單（Binder、Vendor Hooks、IncFS、Debug Kinfo、memfd-ashmem shim、GKI 基礎設施）
+   - 各子系統 Android 補丁詳細表格（修改位置、行號、說明）
+   - GKI defconfig vs 上游配置差異（安全強化、LSM 堆疊、Rust 支援）
+   - 修改量化：~26,000 行 / < 0.15% 核心程式碼
+   - 五項設計哲學（最小侵入、可觀察而非可覆寫、擴展點優於分支、漸進廢棄、Rust 安全替代）
+
+3. **analyses/binder-transaction-flow.md** — Binder 交易流程深度分析
+   - 8 階段完整路徑：使用者空間進入 → 目標解析 → SELinux 檢查 → 緩衝區分配 → flat object 轉換 → 優先權繼承 → 交易入列 → 目標讀取 → 回覆
+   - 每階段的鎖定序列（outer_lock → node->lock → inner_lock）
+   - 效能瓶頸分析（copy_from_user、頁面表操作、inner_lock 競爭、SELinux AVC）
+   - 凍結機制與異步垃圾郵件偵測
+   - Mermaid 序列圖
+
+4. **analyses/security-hardening-strategy.md** — ACK 安全強化策略分析
+   - 六層防禦體系：MAC (SELinux)、補充 LSM、編譯器保護 (CFI/SCS)、記憶體分配器強化、模組/完整性保護、BPF 安全
+   - 攻擊類型 vs 防禦機制對照表
+   - Vendor hook 對安全的影響（僅觀察、不可覆寫）
+   - 與上游 Linux 的安全差異分析
+
+5. **analyses/memory-android-extensions.md** — 記憶體管理 Android 擴展分析
+   - MGLRU 預設啟用的設計決策分析
+   - 2 個 vendor hooks 的用途與 restricted/unrestricted 選擇原因
+   - memfd-ashmem 相容層 ioctl 對映表
+   - 外部機制（DMA-BUF heaps、Binder alloc、Cgroup Memory、lmkd）
+   - 「最小核心修改 + 豐富外部機制」設計哲學
+
+6. **analyses/locking-patterns.md** — 跨子系統鎖定模式分析
+   - 五種鎖定模式：階層 spinlock（Binder/IPC）、per-CPU+RCU（排程器/Block/網路）、rwsem+細粒度（mm/fs）、static call（LSM/Vendor Hooks）、原子操作（sk_buff/page）
+   - 8 個子系統鎖定策略比較表
+   - IPC 信號量自適應鎖定特殊案例
+   - RT Preemption 影響分析
+   - Android 效能影響（per-VMA lock、static call、Binder inner_lock 競爭）
+
+**驗證：** 所有分析頁面包含 YAML frontmatter、交叉參考連結。數據來源為已建檔的 wiki 頁面內容，統計數字與各子系統頁面一致。
+
+Pages created: `analyses/vendor-hooks-distribution.md`, `analyses/android-vs-upstream.md`, `analyses/binder-transaction-flow.md`, `analyses/security-hardening-strategy.md`, `analyses/memory-android-extensions.md`, `analyses/locking-patterns.md`
+Pages updated: `index.md`（新增 6 個 Analysis 連結與摘要、Coverage Dashboard 新增 Analyses 列）、`log.md`
+
+## [2026-04-09] sources | drivers/android/ 完整原始碼摘要頁面建立
+
+深度分析 `drivers/android/` 目錄下全部 40+ 個原始碼檔案（C 實現約 10,300 行、Rust 實現約 10,000 行、標頭檔約 1,500 行），建立 `sources/` 目錄下 25 個 Source Summary 頁面。
+
+**建立的頁面：**
+
+### C 實現（6 頁）
+1. **sources/src-drivers-android-binder-c.md** — Binder IPC 核心（7,374 行）：22 個關鍵函式、三層鎖定、交易日誌、延遲工作、Netlink 報告
+2. **sources/src-drivers-android-binder_alloc-c.md** — 緩衝區分配器（1,410 行）：雙紅黑樹、LRU shrinker、KUnit 整合
+3. **sources/src-drivers-android-binderfs-c.md** — Binderfs（786 行）：fs_context API、IDA 管理、功能探測
+4. **sources/src-drivers-android-vendor_hooks-c.md** — Vendor Hooks 匯出（93 行）：50 個符號、27 個標頭檔、14 restricted + 36 regular
+5. **sources/src-drivers-android-debug_kinfo-c.md** — Debug Kinfo（185 行）：platform driver、kallsyms 匯出、XOR checksum
+6. **sources/src-drivers-android-binder_netlink-c.md** — Binder Netlink（33 行）：Generic Netlink 家族、多播群組
+
+### 標頭檔（6 頁）
+7. **sources/src-drivers-android-binder_internal-h.md** — 核心標頭（637 行）：14 個主要結構、11 種工作類型、統計枚舉
+8. **sources/src-drivers-android-binder_alloc-h.md** — 分配器標頭（189 行）：binder_buffer/binder_alloc/shrinker_mdata
+9. **sources/src-drivers-android-dbitmap-h.md** — 動態 bitmap（169 行）：grow/shrink 策略、全部 inline
+10. **sources/src-drivers-android-binder_trace-h.md** — Trace Event（472 行）：~20 個 tracepoint
+11. **sources/src-drivers-android-debug_kinfo-h.md** — Debug Kinfo 標頭（69 行）：__packed 結構
+12. **sources/src-drivers-android-binder_netlink-h.md** — Netlink 標頭（22 行）
+
+### Rust 實現（13 頁）
+13. **sources/src-drivers-android-binder-rust_binder_main-rs.md** — 頂層模組（611 行）：13 子模組、FFI 橋接
+14. **sources/src-drivers-android-binder-process-rs.md** — Process（1,745 行）：Arc 所有權、RBTree、IdPool
+15. **sources/src-drivers-android-binder-thread-rs.md** — Thread（1,596 行）：scatter-gather、物件翻譯、SELinux
+16. **sources/src-drivers-android-binder-node-rs.md** — Node（1,131 行）：排程狀態機、CritIncrWrapper
+17. **sources/src-drivers-android-binder-page_range-rs.md** — 頁面管理（731 行）：Shrinker 包裝、LRU 整合
+18. **sources/src-drivers-android-binder-allocation-rs.md** — 分配邏輯（602 行）：RAII Allocation、FileList
+19. **sources/src-drivers-android-binder-transaction-rs.md** — Transaction（456 行）：Pin-Init、SpinLock<Option<Allocation>>
+20. **sources/src-drivers-android-binder-freeze-rs.md** — 凍結機制（398 行）：FreezeCookie/FreezeListener
+21. **sources/src-drivers-android-binder-range_alloc-rs.md** — 範圍分配器（1,068 行）：Tree/Array 雙實現
+22. **sources/src-drivers-android-binder-context-rs.md** — Context（180 行）：全域鎖、Manager 節點
+23. **sources/src-drivers-android-binder-defs-rs.md** — 常數定義（182 行）：pub_no_prefix! 巨集
+24. **sources/src-drivers-android-binder-error-rs.md** — 錯誤型別（100 行）：BinderError、三種 From
+25. **sources/src-drivers-android-binder-stats-rs.md** — 統計追蹤（89 行）：原子計數器
+
+### 建置與測試（3 頁）
+- **sources/src-drivers-android-Kconfig.md** — 8 個配置選項、C/Rust 互斥
+- **sources/src-drivers-android-Makefile.md** — 5 個編譯目標
+- **sources/src-drivers-android-tests-binder_alloc_kunit-c.md** — 750,000 個窮舉測試案例
+
+**驗證：** 所有頁面包含 YAML frontmatter、原始碼行號引用、雙向交叉參考連結。函式行號引用已與原始碼交叉比對。
+
+Pages created: 25 個 source summary pages in `sources/`
+Pages updated: `index.md`（新增 Sources 區段含 25 個連結、Coverage Dashboard 新增 Source Summaries 列）、`log.md`
