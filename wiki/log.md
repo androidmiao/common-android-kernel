@@ -1,5 +1,244 @@
 # Wiki Log
 
+## [2026-04-20] cleanup | `task_struct.md` 全頁繁體中文化
+
+使用者要求「全部使用繁體中文」。把 `data-structures/task_struct.md` 從混合的簡中內容整份重寫為繁體中文，同時做術語本地化（台灣慣用法）：
+
+- 進程（process，保留）、執行緒（thread）、記憶體（memory）、訊號（signal）、佇列（queue）、函式（function）、實作（implement）、憑證（credential）、擷取/存取（access）、即時（realtime）、遮罩（mask）、參數（parameter）、檔案描述符（file descriptor）、位址空間（address space）、上下文切換（context switch）、架構（architecture）、排程類別（scheduling class）⋯等。
+- 程式碼 block 內的註解一併轉繁。
+- 修正原頁面的壞連結：`../subsystems/memory.md` → `../subsystems/memory-management.md`、`../subsystems/binder.md` → `../entities/binder.md`、`../concepts/signals.md`（不存在，移除）、`../concepts/vendor_hooks.md` → `../concepts/vendor-hooks.md`。
+- 新增一條 Cross-Reference：ABI 穩定性機制（對應 ANDROID_VENDOR_DATA / OEM 巨集）。
+
+**未變更**：frontmatter 內容、結構層級、章節順序與 Mermaid 圖。只動語言 + 壞連結修正。
+
+---
+
+## [2026-04-20] query + update | `struct task_struct` 定義位置 + forward declaration 地圖
+
+回答使用者問題「struct task_struct 是在哪邊定義？」。雖然 `data-structures/task_struct.md` frontmatter 原本就已標註 `defined_in: common/include/linux/sched.h:821`，但頁面缺少「完整定義 vs forward declaration」的區分，以及 forward decl 為何散落各處 header 的解釋。
+
+**核心發現**：
+- 完整定義唯一出現在 `common/include/linux/sched.h:821`。
+- `struct task_struct;` forward declaration 在 `common/include/` 下共 **50 個**檔案出現，遍布排程子 header、鎖／等待／同步、訊號／權能／IPC、檔案 I/O、除錯／追蹤、sanitizer、架構抽象層，以及 5 個 Android vendor hook 標頭（`trace/hooks/{sched,signal,sys,fpsimd,mpam}.h`）。
+- 設計動機：`sched.h` 是數千行的巨型 header，若每個 API header 都直接 include 它，編譯時間會爆炸；呼叫端只需要 `struct task_struct *` 的場合（絕大多數）就改用 forward decl。
+
+**更新**：
+- `data-structures/task_struct.md` — 在「Purpose」之後、「Definition」之前新增「Where It Is Defined」段落：列出完整定義位置、按子系統分類的 forward declaration 分布、以及設計理由。同步更新 `last_updated: 2026-04-20`。
+- `log.md` — 本條目。
+
+**未變更**：index.md（無新頁面建立）、index 頁對 task_struct 的條目摘要仍有效。
+
+---
+
+## [2026-04-20] follow-up | Qualcomm 韌體堆疊加入 SCMI/ACPM 三方對照
+
+接續稍早關於 ARM SCMI 與 Google ACPM 的分析，回答使用者問題「那 Qualcomm 是什麼做法？」。把 Qualcomm 整理擴充為三方對照。
+
+**核心發現**：
+- Qualcomm 的 AP↔SoC 韌體介面**不是單一協定**，而是多層平行協定堆疊，分布在 `drivers/firmware/qcom/`（8 檔、4,447 行）與 `drivers/soc/qcom/`（RPMh/RSC/Command DB/BCM Voter/AOSS QMP/SPM/SMD-RPM）。
+- 三代演進：(1) SDM8xx 以前的 SMD-RPM；(2) SDM845 以後的 RPMh + RSC + Command DB + BCM Voter + AOSS QMP + SPM + SCM 主流棧；(3) Snapdragon X Elite（Hamoa, `qcom,x1e80100`）開始引入 **CPUCP + ARM SCMI**（僅 Perf protocol 0x13）作為 CPU 效能介面。
+- 硬體加速：RPMh 透過 **RSC 內的 TCS 暫存器**允許 SLEEP/WAKE TCS 在 CPU 進入 deep sleep 時由硬體自動送出 vote，**完全不需 CPU 執行 SW**，這是 SCMI 難以等價實現的關鍵。
+- 證據統計：ACK 樹中 `rpmh-rsc` compatible 出現於 **22 個 DTSI**；`arm,scmi` 僅出現於 **1 個**（X Elite hamoa.dtsi）。
+- Qualcomm 主流路線堅持 RPMh 而非轉 SCMI 的 5 項理由：TCS 硬體旁路、BCM aggregation 協定空缺、OSM/EPSS 已比 SCMI 更快、客戶/BSP 生態慣性、X Elite 的策略性部分採用。
+
+**新增/擴充頁面**：
+- `entities/qualcomm-firmware-stack.md`（新建）— Qualcomm 完整韌體堆疊實體頁：三代演進、source layout、DT 證據鏈、consumer 驅動表、Kconfig。
+- `analyses/scmi-vs-google-acpm.md`（擴充）— 標題改為「AP↔SCP 韌體介面三方對照」。新增 B 段 Qualcomm 證據鏈（B.1–B.4 含 compatible 統計、SM8550 DT 結構、X Elite hamoa.dtsi 片段、Qualcomm 功能對映表）、C 段三方對照總表（16 維度 × 4 欄），以及「為何 Qualcomm 主流路線堅持 RPMh 不轉 SCMI」的 5 項理由。
+- `entities/arm-scmi.md`（cross-link 更新）— 加入 qualcomm-firmware-stack 相關連結與說明。
+- `entities/google-acpm.md`（cross-link 更新）— 加入 qualcomm-firmware-stack 相關連結與說明。
+
+**更新**：
+- `index.md` — Entities 區塊新增 qualcomm-firmware-stack；Analyses 項目更名「SCMI vs Google ACPM 分析」為「AP↔SCP 韌體介面三方對照」並更新摘要。
+- `log.md` — 本條目。
+
+---
+
+## [2026-04-20] query + ingest | ARM SCMI 實作細節 + Google Tensor 是否使用 SCMI
+
+回答使用者問題「ARM SCMI 的實作說明，以及 Google SoC Accelerator Firmware 是否採用 SCMI 設計」。
+
+**核心發現**：
+- ARM SCMI 完整實作在 `drivers/firmware/arm_scmi/`（31 檔、19,481 行），分 10 個 protocol（Base/Power/System/Perf/Clock/Sensor/Reset/Voltage/Powercap/Pinctrl）、4 種 transport（mailbox/SMC/OP-TEE/virtio），有 SCMI bus、notification、raw mode、quirks framework 等子系統。
+- `vendors/` 目錄目前僅 `imx` 一家 upstream vendor 擴展。
+- **Google Tensor GS101（Pixel 6 系列）並未採用 ARM SCMI**。DT `firmware` 節點宣告 `google,gs101-acpm-ipc`（gs101.dtsi:486-493），由 `drivers/firmware/samsung/exynos-acpm.c:772-778` 的 of_match table 驅動承載——沿用 Samsung Exynos 的 ACPM（Alive Clock and Power Manager）私有協定。
+- CPU DVFS clock 掛在 `acpm_ipc` 上（gs101.dtsi:76 起），不在 `scmi_clk`/`scmi_perf` 上；`drivers/firmware/arm_scmi/vendors/google/` 不存在；`drivers/firmware/google/` 全是 Chromebook coreboot 相關，與 accelerator 無關。
+- Pixel 的 TPU/GXP accelerator 驅動不在 ACK，位於 Google vendor kernel (`private/google-modules/...`)，故 ACK 範圍內無可分析的 "Google SoC Accelerator Firmware" SCMI 介面。
+
+**建立的 Wiki 頁面**：
+- `entities/arm-scmi.md` — ARM SCMI 實作深度解析（protocol 分層、xfer 生命週期、transport 抽象、SCMI bus model、notification 子系統、raw mode、quirks）
+- `entities/google-acpm.md` — Google Tensor GS101 ACPM 實作（DT binding、shmem layout、seqnum 機制、DVFS/PMIC 客戶端、clock provider 角色）
+- `analyses/scmi-vs-google-acpm.md` — 兩者對照分析：證據鏈（DT/binding/clock/driver/vendors 目錄）、10 個 SCMI protocol 到 GS101 實作的功能對映表、設計成因、未來 SCMI 化可能路徑
+
+**更新**：
+- `index.md` — Entities 區塊新增 arm-scmi 與 google-acpm；Analyses 區塊新增 scmi-vs-google-acpm；Coverage Dashboard 的 Analyses 列從 6 → 7
+- `log.md` — 本條目
+
+---
+
+## [2026-04-10] ingest | drivers/firmware/ 韌體驅動子系統完整分析 — 8 個頁面建立
+
+深度分析 `drivers/firmware/` 目錄（201 個 .c/.h 檔、15 個子目錄 + 21 個獨立檔案、~99,851 行程式碼），建立 8 個 Wiki 頁面：
+
+**新增頁面：**
+1. `subsystems/firmware.md` — 韌體驅動子系統總覽：四種通訊模式（SMC/Mailbox/MMIO/Hypervisor）、六大分類、Android 重要性評估、關鍵程式碼路徑
+2. `sources/src-drivers-firmware-Kconfig.md` — 頂層 Kconfig（302 行）：17 個配置選項 + 14 個子目錄引入
+3. `sources/src-drivers-firmware-arm-scmi.md` — ARM SCMI（31 檔, 19,481 行）：多傳輸後端、協定分層
+4. `sources/src-drivers-firmware-qcom-scm.md` — Qualcomm SCM/QSEECOM（8 檔, 4,447 行）：TrustZone 通訊
+5. `sources/src-drivers-firmware-samsung-acpm.md` — Samsung ACPM（6 檔, 1,111 行）：Exynos 電源管理
+6. `sources/src-drivers-firmware-google.md` — Google Coreboot（12 檔, 2,359 行）：coreboot 表 bus
+7. `sources/src-drivers-firmware-arm-psci.md` — ARM PSCI/SMCCC/FF-A（9 檔, 4,114 行）：CPU 熱插拔基礎
+8. `sources/src-drivers-firmware-efi.md` — EFI/UEFI（75 檔, 17,024 行）：runtime services + libstub
+
+**更新頁面：**
+- `index.md` — 新增 Firmware Drivers 子系統條目、7 個 source summary 條目、Coverage Dashboard 更新
+
+## [2026-04-09] ingest | include/ 核心標頭檔目錄完整分析 — 4 個頁面建立
+
+深度分析 `include/` 目錄（6,593 個 `.h` 檔、33 個頂層子目錄），建立 4 個 Wiki 頁面。
+
+**建立的頁面：**
+
+1. **subsystems/include-headers.md** — Include Headers 子系統完整分析
+   - 33 個子目錄分類統計：核心 API 層（linux/2,789 + uapi/964 + asm-generic/152）、子系統標頭（net/383、drm/148、sound/203、media/111、crypto/82）、硬體平台（dt-bindings/1,122、soc/74）、追蹤（trace/219、含 29 個 vendor hook 標頭）
+   - UAPI/內部 API 分離機制詳述
+   - Android 專屬標頭完整分析：android_kabi.h、android_vendor.h、trace/hooks/*（29 檔 1,121 行）、uapi/linux/android/*（3 檔 713 行）
+   - linux/ 82 個子目錄分類說明
+
+2. **concepts/kernel-headers-organization.md** — Headers 組織概念
+   - 三層標頭分離（UAPI → linux/ → asm-generic）
+   - asm-generic 回退機制（67 個 mandatory headers）
+   - Device Tree Bindings 共享常數模式
+   - Trace Events 雙重 include 模式
+
+3. **sources/src-include-linux-android_kabi-h.md** — android_kabi.h 原始碼摘要
+   - 11 個關鍵巨集分析、_Static_assert 保護、gendwarfksyms 整合
+
+4. **sources/src-include-linux-android_vendor-h.md** — android_vendor.h 原始碼摘要
+   - VENDOR/OEM 雙層資料空間、與 vendor hooks 的配合模式
+
+**更新的頁面：** index.md（新增 Subsystems/Concepts/Sources 條目、Coverage Dashboard）
+
+---
+
+## [2026-04-09] ingest | Samples 範例程式碼目錄分析 — 2 個頁面建立
+
+深度分析 `samples/` 目錄（46 個子目錄、289 個檔案、40,417 行程式碼），建立 2 個 Wiki 頁面。
+
+**建立的頁面：**
+
+1. **subsystems/samples.md** — Samples 子系統完整分析
+   - 46 個子目錄分類：追蹤與偵錯（12）、驅動框架（8）、網路與 BPF（4）、安全機制（4）、核心基礎設施（7）、虛擬化（4）、Rust（1）、Android（1）
+   - BPF 範例集深度分析：~100 檔案、17,797 行、XDP/TC/Socket/追蹤/LWT/HBM 六大類
+   - Rust 核心範例分析：15 個模組、展示 module!/Platform/PCI/I2C/USB/Faux/DMA/DebugFS/ConfigFS
+   - Ftrace 範例：direct function/multi/ops/trace array 四種模式
+   - Livepatch 範例：基本修補、回呼機制、shadow 變數三階段
+   - DAMON 範例：WSSE/PRCL/MTIER 三種記憶體監控場景
+   - Android 相關：binderfs 範例（namespace 隔離、裝置動態建立）、BPF cookie-UID helper
+
+2. **sources/src-samples-Kconfig.md** — Kconfig 配置檔摘要
+   - ~53 個配置選項完整列表
+   - 兩類編譯模型（核心模組 vs 使用者空間程式）
+   - 架構限制與依賴關係
+
+**更新的頁面：** index.md（Subsystems 新增 Samples 條目、Sources 新增 samples/Kconfig、Coverage Dashboard 新增 Samples 列）
+
+---
+
+## [2026-04-09] ingest | ARM/ARM64/RISC-V 架構分析 — 3 個頁面建立
+
+深度分析三個處理器架構目錄（`arch/arm`、`arch/arm64`、`arch/riscv`），建立 3 個 Wiki 頁面。
+
+**建立的頁面：**
+
+1. **subsystems/arch-arm.md** — ARM 32-bit 架構完整分析
+   - 4,559 個檔案、145 個子目錄、55 個 mach-* 平台目錄
+   - ARMv3m 至 ARMv7-M 全系列 CPU 支援
+   - 76 個 defconfig、2,771 個 Device Tree 檔案
+   - 安全特性（Stack Protector/KASAN/CFI）、加密子系統（AES-CE/NEON）
+   - 無 Android 特定修改，GKI 不再支援 ARM32
+
+2. **subsystems/arch-arm64.md** — ARM64 架構完整分析（GKI 主要目標）
+   - 3,489 個檔案（38 MB）、40+ SoC 平台、2,907 個 Device Tree
+   - gki_defconfig 詳細分析（691 行）：Binder/Vendor Hooks/Debug Kinfo
+   - 安全機制深度分析：PAC/MTE/SCS/CFI/BTI 五層防護
+   - KVM/pKVM 虛擬化（Google 工程師主導）
+   - 加密子系統（40 個檔案，Google LLC 貢獻）
+   - GKI Fragment Configs：db845c/amlogic/rockpi4/microdroid
+
+3. **subsystems/arch-riscv.md** — RISC-V 架構完整分析
+   - 564 個檔案、17 個 SoC 平台、70+ 個 Device Tree
+   - 模組化 ISA 設計：20+ 個擴展配置選項
+   - KVM 虛擬化（含 AIA 進階中斷架構）
+   - ZVK 向量加密擴展
+   - CPU 勘誤修正（Andes/SiFive/T-HEAD/StarFive）
+   - 與 ARM64 的詳細功能對比表
+   - 無 Android 特定修改，尚未納入 GKI 支援
+
+**更新的頁面：** index.md（Subsystems 新增 3 個架構條目、Coverage Dashboard 新增 Architecture 列）
+
+---
+
+## [2026-04-09] ingest | Init 子系統完整分析 — 1 個頁面建立
+
+深度分析核心啟動子系統（`init/`，~1,700 行核心程式碼），建立 1 個 Wiki 頁面。
+
+**建立的頁面：**
+
+1. **subsystems/init.md** — Init 子系統完整分析（245 行）
+   - 涵蓋全部 16 個檔案：main.c、init_task.c、calibrate.c、do_mounts.c、do_mounts.h、do_mounts_initrd.c、do_mounts_rd.c、initramfs.c、initramfs_internal.h、initramfs_test.c、noinitramfs.c、version.c、version-timestamp.c、Makefile、Kconfig、Kconfig.gki
+   - 四階段啟動流程：start_kernel → rest_init → kernel_init_freeable → kernel_init
+   - Initcall 分級機制（pure/core/postcore/arch/subsys/fs/device/late 8 個等級）
+   - 根檔案系統掛載策略（NFS/CIFS/Block/nodev 四種路徑）
+   - initramfs cpio 有限狀態機解析器（8 個狀態）
+   - init_task（PID 0）靜態定義：排程屬性、初始憑證、Shadow Call Stack
+   - BogoMIPS 延遲校正：直接校正與收斂校正兩種方法
+   - Boot Config 機制：initrd 末尾附加結構化組態
+   - Android/GKI 注意事項：Shadow Call Stack、sched_ext、Kconfig.gki 隱藏組態
+   - 26 個核心啟動參數對照表
+
+**更新的頁面：** index.md（Subsystems 新增 Init 條目、Coverage Dashboard 新增 Init 列）
+
+---
+
+## [2026-04-09] ingest | Driver Framework 完整分析 — 6 個頁面建立
+
+深度分析核心裝置驅動框架（`drivers/base/`，~27,800 行），建立 6 個 Wiki 頁面。
+
+**建立的頁面：**
+
+1. **subsystems/driver-framework.md** — 子系統完整分析
+   - 目錄結構（30+ 檔案）、架構圖（Mermaid）、內部資料結構（subsys_private/driver_private/device_private）
+   - 四條關鍵程式碼路徑：裝置註冊、驅動探測、延遲探測重試、fw_devlink 連結建立
+   - Kconfig 選項分析、EXPORT_SYMBOL 統計（~149 個）
+   - Android 修改評估：核心檔案零修補，僅 arch_topology.c 含 2 個 vendor hooks
+
+2. **concepts/driver-model.md** — 驅動模型概念
+   - Bus-Device-Driver 三層架構設計原理
+   - 六大機制：匹配綁定、Deferred Probing、fw_devlink、Device Links、Devres、Component 框架
+   - Faux Bus（2025 新增）、sysfs 拓撲、Platform Driver 使用模式
+   - Android 最小化修改策略分析
+
+3. **data-structures/device.md** — `struct device` 資料結構
+   - 欄位群組（身份/匯流排/PM/DMA/devres/fwnode）、生命週期八階段、關鍵操作函式表
+
+4. **data-structures/device_driver.md** — `struct device_driver` 資料結構
+   - 匹配表優先順序、探測策略、PM ops、生命週期五階段
+
+5. **data-structures/bus_type.md** — `struct bus_type` 資料結構
+   - match/probe 策略、subsys_private 內部狀態、主要匯流排實例表
+
+6. **entities/platform-bus.md** — Platform Bus 實體分析
+   - platform_device/platform_driver 結構、五級匹配流程、資源存取 API、platform_bus_type 定義
+
+**更新的頁面：** index.md（新增 6 個條目、更新 Coverage Dashboard：Driver Framework → Complete）
+
+**關鍵發現：**
+- Driver Framework 核心（core.c/bus.c/dd.c/driver.c/class.c/platform.c）在 ACK 中與上游 Linux 完全一致
+- 僅 arch_topology.c 含 2 個 Android vendor hooks（thermal_stats、topology_flags）
+- 此為 GKI 刻意設計：驅動框架作為穩定基礎 API，不允許廠商修改
+
+---
+
 ## [2026-04-09] apis | 核心 API 介面全面分析 — 5 個 API 頁面建立
 
 深度分析核心五大 API 介面類型，建立 `wiki/apis/` 下全部 5 個頁面，總計約 1,500 行中文 Wiki。
@@ -517,3 +756,98 @@ Pages updated: `index.md`（新增 6 個 Analysis 連結與摘要、Coverage Das
 
 Pages created: 25 個 source summary pages in `sources/`
 Pages updated: `index.md`（新增 Sources 區段含 25 個連結、Coverage Dashboard 新增 Source Summaries 列）、`log.md`
+
+## [2026-04-25] analysis | 專案初始導覽
+
+將初次研究 `common-android-mainline` checkout 後的專案導覽整理進 wiki，建立 `analyses/project-orientation.md`。
+
+**重點內容：**
+
+1. **Checkout 身分與版本**
+   - 此工作區是 Android `repo` checkout，不是單一 Git repository
+   - kernel 主體位於 `common/`，版本為 Linux `6.19.0-rc8`
+   - manifest 指向 `common-android-mainline` superproject 與 `kernel/common` 的 `android-mainline`
+
+2. **目錄與子專案分工**
+   - `common/`：kernel 原始碼
+   - `build/kernel/`：Kleaf/Bazel 建置系統
+   - `common-modules/`：Trusty、virtio-media、virtual-device 等共用模組
+   - `devices/google/raviole/`：Pixel 6 / GS101 device tree 與 fragments
+   - `prebuilts/`、`kernel/tests/`、`test/`：工具鏈與測試支援
+
+3. **建置入口**
+   - `tools/bazel build //common:kernel`
+   - `tools/bazel build //common:kernel_aarch64`
+   - `tools/bazel run //common:kernel_aarch64_dist`
+   - `tools/bazel run //common:kernel_aarch64_config`
+
+4. **Android 特有層**
+   - `drivers/android/` 是 Binder、Rust Binder、BinderFS、Vendor Hooks、debug_kinfo、KABI/OEM data padding 的主要入口
+   - 將 Android driver Kconfig 選項與用途整理成表格
+
+5. **本地狀態注意事項**
+   - `common/` 目前有既存未提交修改，集中在 netfilter xtables/UAPI 與 memory model litmus test
+   - 後續實作前應先確認這些 diff 是否屬於使用者正在進行的工作
+
+Pages created: `analyses/project-orientation.md`
+Pages updated: `index.md`（新增 Analysis 連結、Coverage Dashboard Analyses 由 7 更新為 8）、`log.md`
+
+## [2026-04-25] analysis+lint | Subsystem wiki 健康檢查與第一輪整理
+
+回顧既有 Linux subsystem wiki 分析品質，建立 `analyses/wiki-subsystem-review.md`，並開始依四點優先順序整理。
+
+**已完成：**
+
+1. **記錄 review 建議**
+   - 建立 `analyses/wiki-subsystem-review.md`
+   - 彙整強項：覆蓋範圍完整、Android/GKI 視角清楚、橫向分析有價值
+   - 彙整缺口：格式一致性、壞連結、survey 頁 evidence 不足、統計可能 stale
+
+2. **Wiki hygiene**
+   - `subsystems/scheduler.md` 補 YAML frontmatter
+   - `subsystems/init.md` 補 YAML frontmatter
+   - `subsystems/memory-management.md` 將 `folio` 連結改到既有 `data-structures/page.md`
+   - 新增 `data-structures/vm_area_struct.md` 補齊 VMA 資料結構頁
+
+3. **Scheduler cross-links**
+   - `subsystems/scheduler.md` 新增「交叉參考」章節
+   - 連到 `task_struct`、locking、vendor hooks、BPF、GKI、memory management 與相關 analyses
+
+4. **Survey 頁 evidence snapshot**
+   - `subsystems/drivers-overview.md` 補 `drivers/Kconfig`、`drivers/Makefile`、`drivers/android/Kconfig` 證據表
+   - `subsystems/firmware.md` 補 `drivers/firmware/Kconfig` 證據表
+   - `subsystems/include-headers.md` 補 Android KABI、vendor hooks、Binder UAPI 證據表
+   - `subsystems/samples.md` 補 `samples/Kconfig`、`samples/Makefile` 證據表
+   - `subsystems/arch-arm.md`、`subsystems/arch-arm64.md`、`subsystems/arch-riscv.md` 補架構 Kconfig/Makefile/defconfig 證據表
+
+5. **Consistency checks**
+   - 檢查 `wiki/subsystems/`、`wiki/analyses/`、`wiki/data-structures/` frontmatter：無缺漏
+   - 檢查 markdown file links：修正 `data-structures/inode.md` 中指向未建立頁面的 cross-links
+   - 修正 `wiki/CLAUDE.md` 中 relative link 範例
+   - 檢查 survey 頁 `Evidence Snapshot`：已新增 7 個
+
+Pages created: `analyses/wiki-subsystem-review.md`, `data-structures/vm_area_struct.md`
+Pages updated: `subsystems/scheduler.md`, `subsystems/init.md`, `subsystems/memory-management.md`, `subsystems/drivers-overview.md`, `subsystems/firmware.md`, `subsystems/include-headers.md`, `subsystems/samples.md`, `subsystems/arch-arm.md`, `subsystems/arch-arm64.md`, `subsystems/arch-riscv.md`, `data-structures/inode.md`, `CLAUDE.md`, `index.md`, `log.md`
+
+## [2026-05-01] schema-update | 新增 wiki 同步到 GitHub repo 工作流程
+
+將 wiki 鏡像到獨立 GitHub repo 的同步流程文件化，避免每次 session 重新摸索。
+
+**已完成：**
+
+1. **同步目前 wiki 到 GitHub repo**
+   - 來源：`/Users/alex.miao/android-kernel/common-android-mainline/wiki/`(source of truth)
+   - 目標：`/Users/alex.miao/Documents/.../GitHub/common-android-kernel/wiki/`(mirror)
+   - 指令：`rsync -av --update --exclude='.DS_Store'`
+   - 結果：41 個檔案被覆寫或新建；同步後兩端各 112 個檔案(已排除 `.DS_Store`)，完全一致
+
+2. **CLAUDE.md 新增第 10 節「Mirroring to GitHub Repository」**
+   - 記錄來源/鏡像路徑、`rsync` 指令、政策說明
+   - 政策：使用 `--update`(只覆寫較新檔案)、排除 `.DS_Store`、不啟用 `--delete`(保留鏡像端額外檔案，需明確要求才剪除)
+   - 同步後驗證步驟：比對來源/目標檔案數
+   - 註明 Cowork session 需先 `request_cowork_directory` 取得 GitHub 資料夾存取權
+
+3. **再同步 CLAUDE.md 變更到 GitHub mirror**
+   - 兩端 `CLAUDE.md` 皆 17,733 bytes、皆有第 10 節
+
+Pages updated: `CLAUDE.md`(新增 §10)、`log.md`

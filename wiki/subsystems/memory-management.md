@@ -180,7 +180,7 @@ graph TD
 ## 關鍵資料結構
 
 - [`struct page`](../data-structures/page.md) @ `include/linux/mm_types.h:79` — 表示單一實體頁面（4KB），包含 flags、\_refcount、\_mapcount、LRU 連結、mapping 等欄位
-- [`struct folio`](../data-structures/folio.md) @ `include/linux/mm_types.h:401` — 封裝 compound page 的多頁邏輯單元，包含 `_large_mapcount`、`_nr_pages_mapped`、deferred split 列表
+- [`struct folio`](../data-structures/page.md) @ `include/linux/mm_types.h:401` — 封裝 compound page 的多頁邏輯單元，包含 `_large_mapcount`、`_nr_pages_mapped`、deferred split 列表
 - [`struct vm_area_struct`](../data-structures/vm_area_struct.md) @ `include/linux/mm_types.h:904` — 行程虛擬記憶體區域：vm_start/vm_end、vm_flags、vm_file、vm_ops，支援 per-VMA lock（`CONFIG_PER_VMA_LOCK`）
 - [`struct mm_struct`](../data-structures/mm_struct.md) @ `include/linux/mm_types.h:1075` — 行程記憶體管理上下文：pgd、mm_mt（Maple Tree）、mmap_lock、RSS 統計、brk/stack 位址
 - `struct scan_control` @ `mm/vmscan.c:78` — 頁面回收上下文：priority、order、target_mem_cgroup、GFP flags

@@ -528,21 +528,19 @@ Android 的内存管理利用 inode 的页面缓存计数:
 
 ### 相关数据结构
 
-- [super_block](super_block.md) - 文件系统的元信息和全局状态
-- [dentry](dentry.md) - 目录项,作为 inode 的路径引用
-- [address_space](address_space.md) - 页面缓存管理
-- [file_operations](file_operations.md) - 文件级别的操作
-- [inode_operations](inode_operations.md) - inode 级别的操作
+- `super_block` - 文件系统的元信息和全局状态
+- `dentry` - 目录项,作为 inode 的路径引用
+- `address_space` - 页面缓存管理
+- `file_operations` - 文件级别的操作
+- `inode_operations` - inode 级别的操作
 - [binder_proc](binder_proc.md) - Android Binder IPC inode 表示
 
 ### 相关概念
 
-- [Page Cache](../concepts/page_cache.md) - inode 通过 address_space 管理的页面缓存
-- [VFS Layer](../concepts/vfs_layer.md) - inode 是 VFS 抽象的核心
-- [Writeback Mechanism](../concepts/writeback.md) - 脏页到磁盘的回写过程
-- [File System Mount](../concepts/file_system_mount.md) - inode 在超级块的上下文中
-- [Reference Counting](../concepts/reference_counting.md) - inode 使用引用计数管理生命周期
-- [Locking Primitives](../concepts/locking.md) - inode 的 i_lock 和 i_rwsem
+- [Filesystems](../subsystems/filesystems.md) - VFS、page cache、writeback、mount 與 inode 的整體上下文
+- [Memory Management](../subsystems/memory-management.md) - page cache 與 memory cgroup accounting 背景
+- Reference counting - inode 使用引用计数管理生命周期
+- [Locking Primitives](../concepts/locking-primitives.md) - inode 的 i_lock 和 i_rwsem
 
 ### 相关操作
 

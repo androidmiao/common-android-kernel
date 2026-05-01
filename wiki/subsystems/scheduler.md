@@ -1,3 +1,22 @@
+---
+type: subsystem
+kernel_path: "kernel/sched/"
+upstream: partial
+android_patches: "vendor hooks and GKI scheduling configuration"
+vendor_hooks:
+  - include/trace/hooks/sched.h
+related:
+  - ../data-structures/task_struct.md
+  - ../concepts/locking-primitives.md
+  - ../concepts/vendor-hooks.md
+  - ../concepts/bpf.md
+  - ../concepts/gki.md
+  - ../concepts/tracing-and-ftrace.md
+  - ../analyses/vendor-hooks-distribution.md
+  - ../analyses/locking-patterns.md
+last_updated: 2026-04-25
+---
+
 # Scheduler 子系統深度分析
 
 > **核心路徑**: `kernel/sched/`
@@ -29,6 +48,7 @@
 18. [統計與除錯](#18-統計與除錯)
 19. [輔助機制](#19-輔助機制)
 20. [檔案索引](#20-檔案索引)
+21. [交叉參考](#21-交叉參考)
 
 ---
 
@@ -761,5 +781,16 @@ Cgroup CPU 記帳子系統，透過 `/sys/fs/cgroup/cpuacct/` 提供每個 cgrou
 | `Makefile` | ~30 | 建置規則 |
 
 ---
+
+## 21. 交叉參考
+
+- [`task_struct`](../data-structures/task_struct.md) — scheduler 最重要的任務描述符，包含 policy、priority、CPU affinity、vendor data 等欄位
+- [鎖定原語](../concepts/locking-primitives.md) — run queue lock、RT mutex、RCU 與 lockdep 背景
+- [Vendor Hooks](../concepts/vendor-hooks.md) — Android 排程器 hooks 的宣告/派發機制
+- [Vendor Hooks 跨子系統分佈分析](../analyses/vendor-hooks-distribution.md) — 排程器 78 個 hooks 佔 ACK vendor hooks 約六成的策略含義
+- [跨子系統鎖定模式分析](../analyses/locking-patterns.md) — per-CPU run queue + RCU 的鎖定模式比較
+- [BPF](../concepts/bpf.md) — sched_ext 與 BPF 可擴展排程的基礎
+- [GKI](../concepts/gki.md) — GKI defconfig 與 Android kernel module 邊界
+- [Memory Management](memory-management.md) — PSI、memory pressure 與 scheduler/cgroup 的交互
 
 > 本文件由自動分析產生，基於 `kernel/sched/` 目錄下全部原始碼的逐檔解讀。

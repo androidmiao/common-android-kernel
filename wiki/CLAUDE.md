@@ -380,7 +380,7 @@ created: <ISO date>
 - For functions: `` `schedule()` @ kernel/sched/core.c:6723 ``
 
 ### 5.3 Links
-- Use relative markdown links: `[Binder](../entities/binder.md)`
+- Use relative markdown links from the current wiki page, e.g. `[Binder](entities/binder.md)` from `wiki/CLAUDE.md`
 - Cross-references should be bidirectional: if A links to B, B should link back to A.
 
 ### 5.4 Upstream vs. Android
@@ -513,3 +513,55 @@ At the start of each session:
 3. Read `log.md` (last 10 entries) to understand recent activity.
 4. Ask the user what they'd like to explore or ingest.
 5. Proceed with the appropriate operation.
+
+---
+
+## 10. Mirroring to GitHub Repository
+
+The wiki is mirrored to a separate GitHub-tracked repository for version
+control and sharing. The mainline working tree is the **source of truth**;
+the GitHub mirror is downstream.
+
+### Paths
+
+- **Source (truth):** `/Users/alex.miao/android-kernel/common-android-mainline/wiki/`
+- **Mirror (GitHub):** `/Users/alex.miao/Documents/Documents - Alexmiao MacBook M4 Pro/GitHub/common-android-kernel/wiki/`
+
+### Sync command
+
+When the user asks to sync new/modified wiki content to the GitHub repo, run:
+
+```bash
+rsync -av --update --exclude='.DS_Store' \
+  "/Users/alex.miao/android-kernel/common-android-mainline/wiki/" \
+  "/Users/alex.miao/Documents/Documents - Alexmiao MacBook M4 Pro/GitHub/common-android-kernel/wiki/"
+```
+
+### Policy
+
+- `--update`: only overwrite when the source file is newer (preserves any
+  GitHub-side edits that happen to be newer; this should be rare).
+- `--exclude='.DS_Store'`: never propagate macOS metadata.
+- **No `--delete`**: files removed from the source are NOT auto-removed from
+  the mirror. If the user wants pruning, they must explicitly request it.
+- After syncing, verify file counts match (excluding `.DS_Store`):
+  ```bash
+  find <SRC> -type f ! -name '.DS_Store' | wc -l
+  find <DST> -type f ! -name '.DS_Store' | wc -l
+  ```
+
+### Required Cowork access
+
+The GitHub folder is not mounted by default in Cowork sessions. Before
+syncing, request access with:
+
+```
+request_cowork_directory(path="/Users/alex.miao/Documents/Documents - Alexmiao MacBook M4 Pro/GitHub/common-android-kernel")
+```
+
+### When to sync
+
+- After any meaningful wiki change (new pages, updated pages, log entries).
+- Whenever the user explicitly requests it (e.g. "同步到 GitHub repo").
+- Not automatically on every edit — wait for an explicit request or a
+  natural checkpoint (end of an analysis session).
